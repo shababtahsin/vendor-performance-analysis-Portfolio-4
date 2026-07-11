@@ -170,5 +170,5 @@ To run this project locally with your own data:
 
 ## Author
 
-**Shabab**  
+**Shabab Tahsin**  
 Business Data Analyst | SQL · Python · Power BI · Excel
