@@ -8,6 +8,10 @@ A full-pipeline data analytics project analyzing vendor and product performance 
 
 ![Dashboard](screenshots/00.dashboard.png)
 
+
+
+> **$441M in sales across 119 vendors. The top 10 vendors control 65.7% of procurement — a concentration risk. $2.71M sits locked in unsold inventory. Low-volume vendors carry 10pp higher margins than top sellers, signalling untapped pricing opportunity.**
+
 ---
 
 ## Business Problem
