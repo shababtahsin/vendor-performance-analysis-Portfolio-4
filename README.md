@@ -5,8 +5,8 @@ A full-pipeline data analytics project analyzing vendor and product performance 
 **Dataset:** ~1.5 GB across 4 source tables (119 vendors, $441M total sales, $307M total purchases)  
 **Stack:** Python · SQLite · SQLAlchemy · pandas · matplotlib · seaborn · scipy · Power BI
 
-![Dashboard](outputs/00.dashboard.png)
 
+![Dashboard](screenshots/00.dashboard.png)
 
 ---
 
@@ -63,7 +63,7 @@ Loads the cleaned summary table, filters out records with negative/zero profit a
 
 All 16 numerical columns are heavily right-skewed, consistent with a retail dataset dominated by a long tail of small transactions and a small number of high-value outliers.
 
-![Distributions](outputs/01_distributions.png)
+![Distributions](screenshots/01.distributions.png)
 
 **Key observations from the raw data:**
 - **Gross Profit** has a minimum of −$52,002.78, indicating products sold below cost — likely heavy discounting or clearance activity.
@@ -75,7 +75,8 @@ These distributions informed the data filtering decisions: records with GrossPro
 
 ### Correlation Analysis
 
-![Correlation Heatmap](outputs/02_correlation_heatmap.png)
+
+![Correlation Heatmap](screenshots/02.correlation_heatmap.png)
 
 | Relationship | Correlation | Interpretation |
 |---|---|---|
@@ -94,9 +95,10 @@ The 0.999 purchase-to-sales correlation is the standout finding — it confirms 
 
 198 brands sit in the bottom 15% of sales but top 15% of profit margin — high-margin products that aren't moving.
 
-![Promotional Brands — Table](outputs/03_promotional_brands.png)
+![Promotional Brands — Table](screenshots/03.promotional_brands.png)
 
-![Promotional Brands — Scatter](outputs/04_promotional_brands_scatter.png)
+
+![Promotional Brands — Scatter](screenshots/04.promotional_brands_scatter.png)
 
 The scatter plot isolates the target brands (red) in the upper-left quadrant: above the high-margin threshold (~65%) and below the low-sales threshold (~$560). These brands are profitable per unit but invisible to buyers — candidates for targeted promotions, bundle deals, or shelf placement changes rather than price cuts.
 
@@ -104,7 +106,8 @@ The scatter plot isolates the target brands (red) in the upper-left quadrant: ab
 
 The top 10 vendors account for **65.69%** of total procurement spend, with Diageo North America alone at 16.3%.
 
-![Vendor Concentration — Donut](outputs/05_donut_vendor_scatter.png)
+
+![Vendor Concentration — Donut](screenshots/05.donut_vendor_scatter.png)
 
 | Rank | Vendor | Contribution |
 |---|---|---|
@@ -144,7 +147,7 @@ Notably, the vendors with the most locked capital (Diageo, Jim Beam, Pernod Rica
 
 ### 5. Profit Margin: Top vs. Low-Performing Vendors
 
-![Confidence Intervals](outputs/06_confidence_intervals.png)
+![Confidence Intervals](screenshots/06.confidence_intervals.png)
 
 | Group | 95% CI | Mean Margin |
 |---|---|---|
