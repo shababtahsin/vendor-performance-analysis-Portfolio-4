@@ -5,7 +5,8 @@ A full-pipeline data analytics project analyzing vendor and product performance 
 **Dataset:** ~1.5 GB across 4 source tables (119 vendors, $441M total sales, $307M total purchases)  
 **Stack:** Python · SQLite · SQLAlchemy · pandas · matplotlib · seaborn · scipy · Power BI
 
-![Dashboard](outputs/00_dashboard.png)
+![Dashboard](outputs/00.dashboard.png)
+
 
 ---
 
