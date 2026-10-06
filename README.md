@@ -1,4 +1,4 @@
-````markdown
+
 # Vendor Performance Analysis
 
 A vendor and inventory analysis project built from approximately **1.5 GB of raw data** across four source tables.
