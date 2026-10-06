@@ -1,386 +1,797 @@
+# 📦 Vendor Performance & Inventory Analysis
 
-# Vendor Performance Analysis
+![Python](https://img.shields.io/badge/Python-Analysis-blue)
+![SQLite](https://img.shields.io/badge/SQLite-Database-lightgrey)
+![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-yellow)
+![Status](https://img.shields.io/badge/Status-Complete-brightgreen)
 
-A vendor and inventory analysis project built from approximately **1.5 GB of raw data** across four source tables.
+## Project Overview
 
-The project uses **Python, SQLite, SQL and Power BI** to look at vendor concentration, purchasing costs, inventory movement, profit margins and products that may need promotional attention.
+This project analyses vendor, purchasing, sales and inventory behaviour using a large retail dataset originally containing approximately **1.5 GB of raw data across four source tables**.
 
-**Dataset:** ~1.5 GB across 4 source tables · 119 vendors · $441M total sales · $307M total purchases  
-**Stack:** Python · SQLite · SQLAlchemy · pandas · matplotlib · seaborn · scipy · Power BI
+The workflow combines:
 
-![Dashboard](screenshots/00.dashboard.png)
+- **Python** for data processing and analysis
+- **SQLite + SQLAlchemy** for data storage and aggregation
+- **pandas** for feature engineering
+- **scipy** for statistical testing
+- **Power BI** for reporting
 
-### Portfolio Snapshot
+The main goal was to understand vendor performance from several angles:
 
-- **$441M** in total sales
-- **119 vendors**
-- Top 10 vendors account for **65.7% of procurement spend**
-- Approximately **$2.71M** tied up in unsold inventory
-- Lower-volume vendors show margins roughly **10 percentage points higher** than the highest-volume group
+- procurement concentration
+- purchase volume and unit cost
+- sales and purchase relationships
+- inventory movement
+- margin behaviour
+- products with low sales but relatively high margins
 
----
-
-## Business Problem
-
-The aim of this project was to understand where vendor and inventory performance could be improved.
-
-I focused on five questions:
-
-1. Which brands have strong margins but low sales?
-2. How concentrated is procurement spend across vendors?
-3. Are larger purchase quantities associated with lower unit costs?
-4. Which vendors have slow-moving inventory, and how much money is tied up in unsold stock?
-5. Is there a meaningful difference in profit margins between high-sales and low-sales vendors?
+> The project focuses on analytical relationships and portfolio screening rather than accounting-grade inventory or profitability reporting.
 
 ---
 
-## Data Pipeline
+## Dashboard Preview
 
-### Step 1 — Data Ingestion (`01_data_ingestion.py`)
+![Vendor Performance Dashboard](screenshots/00.dashboard.png)
 
-The first script reads the CSV files from the `/data` folder and loads them into a SQLite database called `inventory.db`.
+---
 
-Each source file becomes its own database table.
+# 🎯 Business Questions
 
-The script also records basic ingestion activity and runtime.
+The project explored five main questions:
 
-### Source Tables
+1. Which products combine relatively high margins with low sales?
+2. How concentrated is procurement across major vendors?
+3. Are higher purchase volumes associated with lower average unit prices?
+4. Which vendors show weaker sales-to-purchase quantity ratios?
+5. Do high-sales and low-sales records show different margin behaviour?
 
-| Table | Description |
+---
+
+# 🧱 Data Pipeline
+
+```text
+Raw CSV Files
+     ↓
+Python Ingestion
+     ↓
+SQLite Database
+     ↓
+SQL CTE Aggregation
+     ↓
+Vendor-Product Summary
+     ↓
+Python Analysis
+     ↓
+Power BI
+```
+
+---
+
+# 1️⃣ Data Ingestion
+
+**Script**
+
+```text
+python/01_data_ingestion.py
+```
+
+The ingestion script reads CSV files and loads each source into a SQLite database called:
+
+```text
+inventory.db
+```
+
+The original project used four main source tables:
+
+| Table | Purpose |
 |---|---|
-| `purchases` | Purchase transactions including vendor, brand, quantity and cost |
-| `purchase_prices` | Product-level purchase prices by vendor and brand |
-| `vendor_invoice` | Purchase-order information including freight costs |
-| `sales` | Sales transactions including brand, quantity, revenue and excise tax |
+| `purchases` | Purchase quantity and purchase-value records |
+| `purchase_prices` | Product and vendor price information |
+| `vendor_invoice` | Vendor-level freight information |
+| `sales` | Sales quantity, sales value and excise tax |
+
+The raw source files are not included in this repository because of their size.
 
 ---
 
-### Step 2 — Feature Engineering (`02_get_vendor_summary.py`)
+# 2️⃣ Vendor Summary Creation
 
-The second script combines the four source tables using a SQL query built around three CTEs:
+**Script**
 
-- `FreightSummary`
-- `PurchaseSummary`
-- `SalesSummary`
+```text
+python/02_get_vendor_summary.py
+```
 
-The result is a single `vendor_sales_summary` table used for the main analysis.
+The second stage builds an analytical vendor-product summary using SQL CTEs:
 
-The script also:
+```text
+FreightSummary
+PurchaseSummary
+SalesSummary
+```
 
-- converts data types
-- fills missing values where required
-- removes unnecessary whitespace
-- creates additional business metrics
+The resulting table contains one analytical row per vendor-product combination in the exported summary.
 
-### Metrics Created
+The processed summary contains:
 
-| Metric | Formula |
-|---|---|
-| `GrossProfit` | TotalSalesDollars − TotalPurchaseDollars |
-| `ProfitMargin` | (GrossProfit / TotalSalesDollars) × 100 |
-| `StockTurnover` | TotalSalesQuantity / TotalPurchaseQuantity |
-| `SalesToPurchaseRatio` | TotalSalesDollars / TotalPurchaseDollars |
+**10,692 rows**
 
-The final summary is saved to both:
+and is included in the repository as:
 
-- `inventory.db`
-- `vendor_sales_summary.csv`
+```text
+data/vendor_sales_summary.csv
+```
 
 ---
 
-### Step 3 — Analysis & Visualisation (`03_vendor_analysis.py`)
+## Derived Metrics
 
-The third script loads the cleaned vendor summary and performs the main analysis.
+Several analytical fields were created.
 
-The raw summary contained **10,692 records**.
+| Code Field | Formula | Interpretation |
+|---|---|---|
+| `GrossProfit` | Sales Dollars − Purchase Dollars | **Sales–Purchase Value Difference / Gross Profit Proxy** |
+| `ProfitMargin` | GrossProfit ÷ Sales Dollars × 100 | **Margin Proxy** |
+| `StockTurnover` | Sales Quantity ÷ Purchase Quantity | **Sales-to-Purchase Quantity Ratio** |
+| `SalesToPurchaseRatio` | Sales Dollars ÷ Purchase Dollars | Sales value relative to purchase value |
 
-For parts of the profitability analysis, records with zero or negative profit and zero sales were excluded so that margin comparisons were not distorted by invalid or non-comparable values.
+### Important Metric Note
+
+The source data does not provide accounting COGS or average inventory.
+
+For that reason:
+
+- `GrossProfit` should be treated as a **gross-profit proxy**
+- `ProfitMargin` should be treated as a **margin proxy**
+- `StockTurnover` should be interpreted as a **sales-to-purchase quantity ratio**, not standard accounting inventory turnover
+
+These measures are still useful for comparative analysis, but their definitions matter.
 
 ---
 
-## Exploratory Data Analysis
+# 3️⃣ Analytical Dataset
 
-### Distribution Analysis
+**Script**
 
-The numerical variables are strongly right-skewed, which means most observations sit toward the lower end while a smaller number of vendors or products account for much larger values.
+```text
+python/03_vendor_analysis.py
+```
+
+The raw analytical summary contains:
+
+**10,692 vendor-product records**
+
+For the profitability-focused analysis, the script keeps records where:
+
+```text
+GrossProfit > 0
+ProfitMargin > 0
+TotalSalesQuantity > 0
+```
+
+This produces an analytical subset of:
+
+**8,565 records across 119 vendors**
+
+The filtered subset contains approximately:
+
+| Metric | Value |
+|---|---:|
+| Sales | **$441.41M** |
+| Purchases | **$307.34M** |
+| Sales–Purchase Value Difference | **$134.07M** |
+| Vendors | **119** |
+
+> These headline figures describe the filtered analytical subset rather than the complete 10,692-row summary.
+
+For reference, the full processed summary contains approximately:
+
+- **$451.62M sales**
+- **$321.90M purchases**
+
+---
+
+# 📊 Exploratory Analysis
+
+## Distribution Analysis
 
 ![Distributions](screenshots/01.distributions.png)
 
-### Main Observations
+The analysis shows strongly right-skewed distributions across many financial variables.
 
-- **Gross Profit** reaches a minimum of **−$52,002.78**, showing that some products generated losses.
-- Some records have zero sales while still carrying purchase cost, creating invalid or extreme margin values.
-- **Freight Cost** ranges from **$0.09 to $257,032**, showing a very wide spread in shipping costs.
-- **Stock Turnover** ranges from 0 to 274.5, meaning inventory movement varies substantially across products and vendors.
+This means that most vendor-product combinations sit toward the lower end of the distribution while a smaller number account for much larger purchase and sales values.
 
-These checks were useful for deciding which records should be included in the later profitability analysis.
+The original summary also contains:
+
+- loss-making records
+- records with no sales
+- highly variable freight values
+- unusually large sales-to-purchase quantity ratios
+
+These characteristics motivated the use of a filtered subset for the profitability-focused analysis.
 
 ---
 
-## Correlation Analysis
+# 🔗 Correlation Analysis
 
 ![Correlation Heatmap](screenshots/02.correlation_heatmap.png)
 
+The filtered analytical dataset produced the following relationships:
+
 | Relationship | Correlation | Interpretation |
 |---|---:|---|
-| Purchase Qty ↔ Sales Qty | **0.999** | Purchase and sales quantities move very closely together in the aggregated data |
-| Purchase Price ↔ Gross Profit | −0.016 | Very little linear relationship |
-| Profit Margin ↔ Total Sales Price | −0.179 | Weak negative relationship |
-| Stock Turnover ↔ Gross Profit | −0.038 | Very little linear relationship |
+| Purchase Quantity ↔ Sales Quantity | **0.999** | Extremely strong positive relationship |
+| Purchase Price ↔ Gross Profit Proxy | **−0.016** | Almost no linear relationship |
+| Margin Proxy ↔ Total Sales Price | **−0.180** | Weak negative relationship |
+| Sales-to-Purchase Quantity Ratio ↔ Gross Profit Proxy | **−0.038** | Almost no linear relationship |
 
-The strongest result is the **0.999 correlation between purchase and sales quantities**.
+The strongest relationship is between purchase quantity and sales quantity.
 
-This shows that the two measures move extremely closely together in the aggregated dataset.
+This indicates that purchasing and realised sales volumes move very closely together in the aggregated vendor-product data.
 
-It may indicate that purchasing volumes were generally aligned with realised sales, although correlation alone is not enough to prove that the business had an effective forecasting process.
+However:
 
-The other relationships are much weaker, suggesting that profit performance cannot be explained by any one of these variables alone.
+> **Correlation does not prove forecasting quality or causation.**
+
+The result should therefore be treated as a descriptive relationship.
 
 ---
 
-# Research Questions & Findings
+# 🔎 Research Question 1  
+## Which Products May Need Promotional Attention?
 
-## 1. Which Brands May Need Promotional Attention?
-
-I looked for brands that were:
+The analysis searched for product descriptions that were:
 
 - in the **bottom 15% of sales**
-- but in the **top 15% of profit margin**
+- and in the **top 15% of margin proxy**
 
-This identified **198 brands**.
+This identified:
 
-![Promotional Brands — Table](screenshots/03.promotional_brands.png)
+**198 product-description groups**
 
-![Promotional Brands — Scatter](screenshots/04.promotional_brands_scatter.png)
+![Promotional Products](screenshots/03.promotional_brands.png)
 
-The highlighted brands sit in the high-margin / low-sales area of the chart.
+![Promotional Scatter](screenshots/04.promotional_brands_scatter.png)
 
-They already produce relatively strong margins, but sales volume is low.
+These products combine:
 
-Rather than immediately reducing prices, these products could be investigated for:
+```text
+Relatively Low Sales
+        +
+Relatively High Margin Proxy
+```
+
+They may therefore be useful candidates for further investigation.
+
+Possible actions could include testing:
 
 - targeted promotions
 - bundle offers
-- better product placement
-- wider distribution
-- marketing support
+- improved placement
+- broader distribution
+- additional marketing
 
-The important point is that these products have reasonable margin potential but are currently selling in relatively low volumes.
+The analysis does **not** automatically recommend discounting these products.
+
+Their relatively strong margins mean that reducing price without further analysis could weaken profitability.
 
 ---
 
-## 2. How Concentrated Is Procurement Spend?
+# 🏢 Research Question 2  
+## How Concentrated Is Procurement?
 
-The top 10 vendors account for **65.69% of total procurement spend**.
+Procurement is concentrated among a relatively small number of vendors.
 
-Diageo North America alone represents approximately **16.3%**.
+Within the filtered analytical subset:
 
-![Vendor Concentration — Donut](screenshots/05.donut_vendor_scatter.png)
+**Top 10 vendors account for approximately 65.69% of purchase value.**
 
-| Rank | Vendor | Contribution |
+![Vendor Concentration](screenshots/05.donut_vendor_scatter.png)
+
+### Largest Vendors by Purchase Contribution
+
+| Rank | Vendor | Approx. Contribution |
 |---|---|---:|
-| 1 | Diageo North America Inc | 16.3% |
-| 2 | Martignetti Companies | 8.3% |
-| 3 | Pernod Ricard USA | 7.8% |
-| 4 | Jim Beam Brands Company | 7.6% |
-| 5 | Bacardi USA Inc | 5.7% |
+| 1 | Diageo North America Inc | **16.3%** |
+| 2 | Martignetti Companies | **8.3%** |
+| 3 | Pernod Ricard USA | **7.8%** |
+| 4 | Jim Beam Brands Company | **7.6%** |
+| 5 | Bacardi USA Inc | **5.7%** |
 
-The top three vendors together represent more than **32% of procurement spend**.
+The top three vendors together account for more than:
 
-That concentration does not automatically mean there is a problem, but it does show that a relatively small number of suppliers account for a large share of purchasing.
+**32% of purchase value**
 
-From a procurement perspective, those relationships would be worth monitoring for:
+This does not automatically indicate excessive supplier risk.
+
+However, it highlights relationships that may be worth monitoring for:
 
 - supplier dependency
-- pricing negotiations
-- availability risk
-- alternative suppliers
+- negotiation leverage
+- pricing exposure
+- supply availability
+- alternative sourcing options
 
 ---
 
-## 3. How Does Purchase Size Relate to Unit Cost?
+# 📦 Research Question 3  
+## How Does Purchase Volume Relate to Unit Price?
 
-Purchase orders were divided into three groups based on quantity.
+The analytical records were divided into three groups according to total purchase quantity.
 
-| Order Size | Avg Unit Price |
+| Purchase Volume Group | Avg Unit Purchase Price |
 |---|---:|
-| Small | $39.06 |
-| Medium | $15.49 |
-| Large | $10.78 |
+| Low Volume | **$39.06** |
+| Medium Volume | **$15.49** |
+| High Volume | **$10.78** |
 
-Large-volume purchases had an average unit price approximately **72% lower** than small-volume purchases in this dataset.
+The high-volume group has an average unit price approximately:
 
-The largest difference occurs between the Small and Medium groups.
+**72% lower than the low-volume group**
 
-The difference between Medium and Large orders is smaller, suggesting that the benefit from increasing purchase quantity becomes less dramatic at higher volumes.
+The strongest difference occurs between the low- and medium-volume groups.
 
-This does not prove that increasing order size directly causes lower prices, because vendor mix and product mix may also affect unit cost.
+The difference between medium and high volume is smaller.
 
-However, the pattern suggests that purchase quantity should be considered when reviewing procurement costs.
+### Interpretation
 
----
+Higher purchase volumes are associated with lower unit prices in this dataset.
 
-## 4. Slow-Moving Inventory & Unsold Stock
+However, the groups contain different products and vendors.
 
-The analysis identified approximately **$2.71M** tied up in unsold inventory.
+Therefore:
 
-| Lowest Turnover Vendors | Turnover | Highest Unsold Inventory Value | Value |
-|---|---:|---|---:|
-| Alisa Carr Beverages | 0.615 | Diageo North America Inc | $722.21K |
-| Highland Wine Merchants LLC | 0.708 | Jim Beam Brands Company | $554.67K |
-| Park Street Imports LLC | 0.751 | Pernod Ricard USA | $470.63K |
-| Circa Wines | 0.756 | William Grant & Sons Inc | $401.96K |
-| Dunn Wine Brokers | 0.766 | E & J Gallo Winery | $228.28K |
+> The result does **not prove that increasing purchase quantity directly causes lower prices**.
 
-Two different issues appear here.
-
-The vendors with the **largest dollar value of unsold stock** are also some of the largest procurement vendors. Their absolute inventory values are therefore partly explained by their overall scale.
-
-The vendors with the **lowest turnover ratios** are different. These may deserve closer attention because inventory is moving more slowly relative to the amount purchased.
-
-Possible areas for review include:
-
-- purchase quantities
-- product demand
-- SKU mix
-- reorder levels
-- promotional activity
+Product mix, vendor mix and product category may also explain part of the difference.
 
 ---
 
-## 5. Do High-Sales and Low-Sales Vendors Have Different Margins?
+# 📉 Research Question 4  
+## Which Vendors Show Lower Sales-to-Purchase Ratios?
+
+The project originally labelled this metric `StockTurnover`.
+
+Its actual calculation is:
+
+```text
+Total Sales Quantity
+÷
+Total Purchase Quantity
+```
+
+For portfolio interpretation, it is better described as:
+
+> **Sales-to-Purchase Quantity Ratio**
+
+A ratio below `1.0` means that recorded sales quantity was lower than recorded purchase quantity during the observed data.
+
+Some of the lowest average vendor ratios were:
+
+| Vendor | Sales-to-Purchase Qty Ratio |
+|---|---:|
+| Alisa Carr Beverages | **0.615** |
+| Highland Wine Merchants LLC | **0.708** |
+| Park Street Imports LLC | **0.751** |
+| Circa Wines | **0.756** |
+| Dunn Wine Brokers | **0.766** |
+
+These vendors may be worth further investigation.
+
+Possible questions include:
+
+- Were purchase quantities unusually high?
+- Was demand weaker than expected?
+- Were products purchased late in the observation period?
+- Was there beginning inventory that affects the comparison?
+- Are specific SKUs responsible for the result?
+
+---
+
+# 💰 Purchase-Minus-Sales Inventory Proxy
+
+The project also calculates:
+
+```text
+(Purchase Quantity − Sales Quantity)
+× Purchase Price
+```
+
+The net result across the filtered analytical subset is approximately:
+
+**$2.71M**
+
+This should **not** be interpreted as verified ending inventory.
+
+Why?
+
+Because the dataset does not provide complete information about:
+
+- beginning inventory
+- timing of purchases
+- timing of sales
+- physical ending inventory
+- inventory adjustments
+
+Some product records also have:
+
+```text
+Sales Quantity > Purchase Quantity
+```
+
+which creates negative implied inventory positions.
+
+Therefore the $2.71M result is best treated as a:
+
+> **Net purchase-minus-sales inventory value proxy**
+
+rather than actual capital confirmed to be tied up in inventory.
+
+---
+
+## Vendors With Large Positive Inventory Proxies
+
+Some of the largest positive vendor-level values were:
+
+| Vendor | Approx. Inventory Proxy |
+|---|---:|
+| Diageo North America Inc | **$722.21K** |
+| Jim Beam Brands Company | **$554.67K** |
+| Pernod Ricard USA | **$470.63K** |
+| William Grant & Sons Inc | **$401.96K** |
+| E & J Gallo Winery | **$228.28K** |
+
+These vendors are also large procurement partners.
+
+Their absolute inventory proxy therefore needs to be interpreted alongside their overall purchasing scale.
+
+---
+
+# 📐 Research Question 5  
+## Do High-Sales and Low-Sales Records Show Different Margins?
 
 ![Confidence Intervals](screenshots/06.confidence_intervals.png)
 
-| Group | 95% CI | Mean Margin |
-|---|---|---:|
-| Top vendors (≥ 75th percentile sales) | 30.74% – 31.61% | **31.17%** |
-| Low vendors (≤ 25th percentile sales) | 40.48% – 42.62% | **41.55%** |
+The current Python analysis divides **vendor-product records** into sales quartiles.
 
-A Welch's t-test was used to compare the two groups.
-
-**Result:** `p < 0.05`
-
-The difference in average margins between the groups is statistically significant within this dataset.
-
-Low-sales vendors have an average margin of approximately **41.55%**, compared with **31.17%** for the highest-sales vendors.
-
-That is a difference of roughly **10 percentage points**.
-
-One possible explanation is that high-volume vendors operate with lower margins while some lower-volume products are sold at higher margins.
-
-The data does not prove why the difference exists, but it does identify a group of lower-volume vendors that may be worth investigating for growth opportunities.
-
----
-
-## Key Findings Summary
-
-1. **Top 10 vendors account for 65.7% of procurement spend**  
-   Procurement is concentrated among a relatively small number of suppliers.
-
-2. **Larger purchases are associated with lower average unit prices**  
-   Large orders averaged **$10.78 per unit**, compared with **$39.06** for small orders.
-
-3. **Low-sales vendors have higher average margins**  
-   The low-sales group averaged approximately **41.55% margin**, compared with **31.17%** for the high-sales group.
-
-4. **Approximately $2.71M is tied up in unsold inventory**  
-   Both absolute inventory value and turnover rate need to be considered when deciding which vendors require attention.
-
-5. **Purchase and sales quantities are very closely related**  
-   The correlation was **0.999**, although this should not be interpreted as proof of forecasting quality.
-
-6. **198 brands combine high margins with low sales**  
-   These brands may be worth testing with targeted promotion or wider distribution.
-
----
-
-## Main Business Takeaway
-
-The biggest lesson from the project is that vendor performance cannot be judged from sales alone.
-
-A high-sales vendor may:
-
-- generate large revenue
-- operate on relatively thin margins
-- account for a large share of procurement
-- and hold a large amount of unsold inventory
-
-At the same time, some smaller vendors have much stronger margins but limited sales.
-
-The most useful approach is therefore to look at **sales, margin, purchasing concentration and inventory turnover together** before deciding where action is needed.
-
----
-
-## Project Structure
+It compares:
 
 ```text
-vendor-performance-analysis/
+Top 25% of vendor-product records by sales
+vs
+Bottom 25% of vendor-product records by sales
+```
+
+The results were:
+
+| Group | 95% CI | Mean Margin Proxy |
+|---|---|---:|
+| High-Sales Records | 30.74% – 31.61% | **31.17%** |
+| Low-Sales Records | 40.48% – 42.62% | **41.55%** |
+
+A Welch's t-test produced:
+
+**p < 0.05**
+
+This indicates a statistically significant difference in margin proxy between the two **record-level sales groups** in the current analytical dataset.
+
+The difference is approximately:
+
+**10.38 percentage points**
+
+### Important Statistical Interpretation
+
+This test operates at the **vendor-product record level**.
+
+It should therefore not be interpreted as proving that entire high-sales vendors have lower margins than entire low-sales vendors.
+
+The result instead shows that:
+
+> Higher-sales vendor-product records in the analytical subset have lower average margin proxies than lower-sales records.
+
+A separate vendor-level aggregation would be required to make a statistical statement specifically about high-sales versus low-sales vendors.
+
+---
+
+# 🚚 Freight Grain
+
+Freight is calculated in the SQL pipeline at:
+
+```text
+Vendor Level
+```
+
+That vendor-level freight amount is then attached to each vendor-product record belonging to the same vendor.
+
+Therefore:
+
+> `FreightCost` must not be summed directly across vendor-product rows.
+
+Doing so would count the same vendor-level freight amount multiple times.
+
+Freight should be analysed either:
+
+- once per vendor
+- or after allocating freight across products using a defined allocation rule
+
+This is an important grain consideration in the model.
+
+---
+
+# 📌 Key Findings
+
+## 🟢 1. Procurement Is Concentrated
+
+The top 10 vendors account for approximately:
+
+**65.7% of purchase value**
+
+This makes supplier concentration an important area to monitor.
+
+---
+
+## 📦 2. Higher Purchase Volume Is Associated With Lower Unit Cost
+
+Average unit purchase price falls from:
+
+**$39.06 → $15.49 → $10.78**
+
+across low-, medium- and high-volume groups.
+
+The pattern is strong, but it should not be interpreted as causal without controlling for vendor and product mix.
+
+---
+
+## 💰 3. Lower-Sales Records Show Higher Margin Proxies
+
+Low-sales vendor-product records average approximately:
+
+**41.55% margin proxy**
+
+compared with:
+
+**31.17%**
+
+for high-sales records.
+
+This difference was statistically significant in the current record-level comparison.
+
+---
+
+## 🎯 4. 198 Product Groups Combine Low Sales With High Margins
+
+These products may be useful candidates for:
+
+- marketing tests
+- distribution review
+- bundle strategies
+- promotional experiments
+
+before considering price reductions.
+
+---
+
+## 🔗 5. Purchase and Sales Quantities Move Closely Together
+
+The correlation between aggregated purchase quantity and sales quantity is approximately:
+
+**0.999**
+
+This shows a very strong relationship but does not establish forecasting accuracy.
+
+---
+
+## 📉 6. Inventory Movement Varies Substantially
+
+Some vendors show much lower sales-to-purchase quantity ratios than others.
+
+These vendors may warrant deeper review of:
+
+- purchase planning
+- product demand
+- SKU mix
+- timing
+- replenishment behaviour
+
+---
+
+# 🎯 Main Business Takeaway
+
+The main lesson from this project is that **vendor performance cannot be judged using sales alone**.
+
+A vendor may simultaneously:
+
+- generate high sales
+- account for a large share of procurement
+- operate at a lower margin proxy
+- and show a large purchase-minus-sales inventory position
+
+At the same time, some lower-sales products show much stronger margin behaviour.
+
+The most useful approach is therefore to consider:
+
+> **Sales + Purchase Value + Margin + Procurement Concentration + Inventory Movement**
+
+together before deciding where action is required.
+
+---
+
+# 🖥️ Power BI
+
+The Power BI report provides an interactive view of vendor performance and the main analytical findings.
+
+**File**
+
+```text
+powerbi/vendor_performance.pbix
+```
+
+The dashboard helps explore:
+
+- vendor performance
+- procurement concentration
+- sales and purchase values
+- margin proxies
+- inventory movement
+- product-level performance
+
+![Dashboard](screenshots/00.dashboard.png)
+
+---
+
+# 📁 Repository Structure
+
+```text
+vendor-performance-analysis-Portfolio-4/
 │
-├── data/                            # Raw CSV files (not included — ~1.5 GB)
-├── logs/                            # Ingestion and processing logs
+├── README.md
+├── LICENSE
+├── .gitignore.txt
 │
-├── 01_data_ingestion.py            # Loads CSVs into SQLite
-├── 02_get_vendor_summary.py        # CTE joins, cleaning and feature engineering
-├── 03_vendor_analysis.py           # Analysis, statistics and charts
+├── data/
+│   └── vendor_sales_summary.csv
 │
-├── outputs/
-│   ├── 00_dashboard.png
-│   ├── 01_distributions.png
-│   ├── 02_correlation_heatmap.png
-│   ├── 03_promotional_brands.png
-│   ├── 04_promotional_brands_scatter.png
-│   ├── 05_donut_vendor_scatter.png
-│   └── 06_confidence_intervals.png
+├── python/
+│   ├── 01_data_ingestion.py
+│   ├── 02_get_vendor_summary.py
+│   └── 03_vendor_analysis.py
 │
-├── vendor_sales_summary.csv
-├── vendor_performance.pbix
-├── Vendor_Performance_Report.pdf
-└── README.md
+├── powerbi/
+│   └── vendor_performance.pbix
+│
+└── screenshots/
+    ├── 00.dashboard.png
+    ├── 01.distributions.png
+    ├── 02.correlation_heatmap.png
+    ├── 03.promotional_brands.png
+    ├── 04.promotional_brands_scatter.png
+    ├── 05.donut_vendor_scatter.png
+    └── 06.confidence_intervals.png
 ```
 
 ---
 
-## Tech Stack
+# ▶️ Running the Project
+
+## Using the Included Processed Dataset
+
+The repository includes:
+
+```text
+data/vendor_sales_summary.csv
+```
+
+This allows the processed analytical dataset to be inspected without downloading the original ~1.5 GB raw files.
+
+---
+
+## Full Raw-Data Pipeline
+
+The full ingestion pipeline requires the original source CSV files used to create:
+
+```text
+purchases
+purchase_prices
+vendor_invoice
+sales
+```
+
+Those files are not included in this repository because of their size.
+
+The source scripts documenting the original workflow are available in:
+
+```text
+python/
+```
+
+---
+
+# 🛠️ Tech Stack
 
 | Tool | Purpose |
 |---|---|
-| Python 3.12 | Data processing and analysis |
-| pandas | Data cleaning, manipulation and aggregation |
-| SQLite + SQLAlchemy | Database storage and SQL querying |
-| matplotlib + seaborn | Data visualisation |
+| Python | Data processing and analysis |
+| pandas | Cleaning, transformation and aggregation |
+| SQLite | Local analytical database |
+| SQLAlchemy | Database ingestion |
+| SQL / CTEs | Vendor, purchase, sales and freight aggregation |
 | scipy.stats | Welch's t-test and confidence intervals |
-| Power BI | Interactive dashboard |
+| matplotlib | Visualisation |
+| seaborn | Statistical visualisation |
+| Power BI | Interactive reporting |
 
 ---
 
-## Setup & Usage
+# 🧠 Skills Demonstrated
 
-> **Note:** The raw dataset (~1.5 GB) is not included in the repository because of its size.
+### Python
 
-```bash
-# Clone the repository
-git clone https://github.com/shababtahsin/vendor-performance-analysis-Portfolio-4.git
-
-cd vendor-performance-analysis-Portfolio-4
-
-# Install dependencies
-pip install pandas sqlalchemy scipy matplotlib seaborn numpy
-
-# Run the pipeline
-python 01_data_ingestion.py
-python 02_get_vendor_summary.py
-python 03_vendor_analysis.py
+```text
+pandas
+groupby
+feature engineering
+quantiles
+correlation
+statistical testing
+visualisation
 ```
 
-Open `vendor_performance.pbix` in Power BI Desktop to view the interactive dashboard.
+### SQL
+
+```text
+CTEs
+aggregation
+joins
+grain management
+vendor-product modelling
+```
+
+### Statistics
+
+```text
+Correlation
+Confidence Intervals
+Welch's T-Test
+Quartile Segmentation
+```
+
+### Business Analysis
+
+```text
+Vendor Performance
+Procurement Concentration
+Purchase-Volume Analysis
+Margin Analysis
+Inventory Screening
+Product Opportunity Analysis
+```
 
 ---
 
-## Author
+# 📌 Overall Conclusion
+
+The project found substantial variation in vendor and product performance.
+
+Within the main analytical subset:
+
+- approximately **$441.41M in sales** was analysed
+- approximately **$307.34M in purchases** was analysed
+- the top 10 vendors represented around **65.7% of purchase value**
+- high purchase-volume groups had lower average unit prices
+- lower-sales vendor-product records had higher average margin proxies
+- **198 product-description groups** combined relatively high margins with low sales
+- purchase and sales quantities were extremely closely related
+
+The main conclusion is that vendor decisions should not be based on one measure alone.
+
+**Sales, purchasing, margin behaviour, supplier concentration and inventory movement need to be analysed together to understand where opportunities and risks actually exist.**
+
+---
+
+## 👤 Author
 
 **Shah Tahsin**  
 Business Data Analyst | SQL · Python · Power BI
 
 [GitHub](https://github.com/shababtahsin)
-````
